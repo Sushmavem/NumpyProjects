@@ -1,65 +1,107 @@
-import numpy as np
+import tkinter as tk
+from tkinter import messagebox
 
-# Function to print the Sudoku grid
-def print_board(board):
+
+# Function to check if the board is valid (rows, columns, and 3x3 grid should not have duplicates)
+def is_valid(board, row, col, num):
+    # Check row
     for i in range(9):
-        if i % 3 == 0 and i != 0:
-            print("-" * 21)
-        for j in range(9):
-            if j % 3 == 0 and j != 0:
-                print("|", end=" ")
-            print(board[i][j], end=" ")
-        print()
+        if board[row][i] == num:
+            return False
 
-# Function to check if placing num in board[row][col] is valid
-def is_valid(board, num, row, col):
-    # Check the row
-    if num in board[row]:
-        return False
-    # Check the column
-    if num in board[:, col]:
-        return False
-    # Check the 3x3 subgrid
-    start_row = row - row % 3
-    start_col = col - col % 3
-    for i in range(3):
-        for j in range(3):
-            if board[i + start_row][j + start_col] == num:
+    # Check column
+    for i in range(9):
+        if board[i][col] == num:
+            return False
+
+    # Check 3x3 subgrid
+    start_row, start_col = 3 * (row // 3), 3 * (col // 3)
+    for i in range(start_row, start_row + 3):
+        for j in range(start_col, start_col + 3):
+            if board[i][j] == num:
                 return False
+
     return True
 
-# Function to solve the Sudoku puzzle
+
+# Function to solve the puzzle using backtracking
 def solve_sudoku(board):
-    for row in range(9):
-        for col in range(9):
-            if board[row][col] == 0:  # Find an empty cell
-                for num in range(1, 10):  # Try digits 1-9
-                    if is_valid(board, num, row, col):
-                        board[row][col] = num  # Place the number
-                        if solve_sudoku(board):  # Recursively solve
-                            return True
-                        board[row][col] = 0  # Backtrack if invalid
-                return False  # No valid number found, trigger backtracking
-    return True  # Puzzle solved
+    empty = find_empty_location(board)
+    if not empty:
+        return True  # Puzzle solved
 
-# Example Sudoku puzzle (0's represent empty cells)
-sudoku_board = np.array([
-    [5, 3, 0, 0, 7, 0, 0, 0, 0],
-    [6, 0, 0, 1, 9, 5, 0, 0, 0],
-    [0, 9, 8, 0, 0, 0, 0, 6, 0],
-    [8, 0, 0, 0, 6, 0, 0, 0, 3],
-    [4, 0, 0, 8, 0, 3, 0, 0, 1],
-    [7, 0, 0, 0, 2, 0, 0, 0, 6],
-    [0, 6, 0, 0, 0, 0, 2, 8, 0],
-    [0, 0, 0, 4, 1, 9, 0, 0, 5],
-    [0, 0, 0, 0, 8, 0, 0, 7, 9]
-])
+    row, col = empty
+    for num in range(1, 10):
+        if is_valid(board, row, col, num):
+            board[row][col] = num
+            if solve_sudoku(board):
+                return True
+            board[row][col] = 0  # Undo the choice (backtrack)
 
-print("Initial Sudoku Puzzle:")
-print_board(sudoku_board)
+    return False  # Trigger backtracking
 
-if solve_sudoku(sudoku_board):
-    print("\nSolved Sudoku Puzzle:")
-    print_board(sudoku_board)
-else:
-    print("\nNo solution exists")
+
+# Function to find an empty location in the board
+def find_empty_location(board):
+    for i in range(9):
+        for j in range(9):
+            if board[i][j] == 0:
+                return (i, j)
+    return None
+
+
+# Function to update the Sudoku board in the GUI
+def update_gui_board(board, entry_widgets):
+    for i in range(9):
+        for j in range(9):
+            value = board[i][j]
+            entry_widgets[i][j].delete(0, tk.END)
+            if value != 0:
+                entry_widgets[i][j].insert(tk.END, str(value))
+
+
+# Function to handle the solve button click
+def solve_button_click(board, entry_widgets):
+    # Convert the GUI entries to a 2D list (board)
+    for i in range(9):
+        for j in range(9):
+            try:
+                board[i][j] = int(entry_widgets[i][j].get())
+            except ValueError:
+                pass  # Ignore invalid input, keep as 0
+
+    if solve_sudoku(board):
+        update_gui_board(board, entry_widgets)
+    else:
+        messagebox.showinfo("Solution", "No solution exists!")
+
+
+# Function to create the Sudoku board GUI
+def create_sudoku_gui():
+    # Initialize a 9x9 board with zeros (empty)
+    board = [[0 for _ in range(9)] for _ in range(9)]
+
+    # Create the main window
+    root = tk.Tk()
+    root.title("Sudoku Solver")
+    root.geometry("500x500")
+    root.config(bg='blue')  # Set the background color of the window to blue
+
+    # Create a grid of entry widgets (9x9)
+    entry_widgets = [[None for _ in range(9)] for _ in range(9)]
+    for i in range(9):
+        for j in range(9):
+            entry_widgets[i][j] = tk.Entry(root, width=3, font=("Helvetica", 18), justify="center", bd=2)
+            entry_widgets[i][j].grid(row=i, column=j, padx=5, pady=5)
+            entry_widgets[i][j].config(bg="#d3d3d3")  # Light grey background for entry cells
+
+    # Solve button with a nice color and functionality
+    solve_button = tk.Button(root, text="Solve", font=("Helvetica", 14), bg="#4CAF50", fg="white", command=lambda: solve_button_click(board, entry_widgets))
+    solve_button.grid(row=9, column=0, columnspan=9, pady=10)
+
+    # Start the Tkinter event loop
+    root.mainloop()
+
+
+# Run the application
+create_sudoku_gui()
